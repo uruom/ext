@@ -1,5 +1,5 @@
-CMakeFiles/newfs.dir/src/newfs.c.o: \
- /home/students/200110633/xv6-labs-2020/user-land-filesystem/fs/newfs/src/newfs.c \
+CMakeFiles/newfs.dir/src/newfunction.c.o: \
+ /home/students/200110633/xv6-labs-2020/user-land-filesystem/fs/newfs/src/newfunction.c \
  /usr/include/stdc-predef.h \
  /home/students/200110633/xv6-labs-2020/user-land-filesystem/fs/newfs/src/../include/newfs.h \
  /usr/include/stdio.h \

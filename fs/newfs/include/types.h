@@ -1,14 +1,6 @@
 #ifndef _TYPES_H_
 #define _TYPES_H_
 
-#define MAX_NAME_LEN    128     
-#define NEWFS_SUPER_OFS           0
-#define NEWFS_ERROR_NONE          0
-#define NEWFS_ROOT_INO            0
-#define NEWFS_ERROR_IO            EIO 
-#define NEWFS_MAGIC_NUM           0x52415453
-#define NEWFS_IO_SZ()                     (super.sz_io)
-#define NEWFS_DRIVER()                      (super.driver_fd)
 
 #define NEWFS_ROUND_DOWN(value, round)    (value % round == 0 ? value : (value / round) * round)
 // #define NEWFS_ROUND_DOWN(value, round)    (value % round == 0 ? value : (value / round) * round)
@@ -78,22 +70,6 @@ struct newfs_super_d {
     int                map_inode_offset;
     int                data_offset;
 };
-
-struct newfs_inode_d
-{
-    int                ino;                           /* 在inode位图中的下标 */
-    int                size;                          /* 文件已占用空间 */
-    int                dir_cnt;
-    char               target_path[NEWFS_MAX_FILE_NAME];
-    NEWFS_FILE_TYPE      ftype;   
-};  
-
-struct newfs_dentry_d
-{
-    char               fname[NEWFS_MAX_FILE_NAME];
-    NEWFS_FILE_TYPE      ftype;
-    int                ino;                           /* 指向的ino号 */
-}; 
 static inline struct newfs_dentry* new_dentry(char * fname, NEWFS_FILE_TYPE ftype) {
     struct newfs_dentry * dentry = (struct newfs_dentry *)malloc(sizeof(struct newfs_dentry));
     memset(dentry, 0, sizeof(struct newfs_dentry));

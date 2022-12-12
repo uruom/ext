@@ -1,97 +1,96 @@
 #include "newfs.h"
 
 /******************************************************************************
-* SECTION: 宏定义
+* SECTION: 瀹忓畾涔�
 *******************************************************************************/
 #define OPTION(t, p)        { t, offsetof(struct custom_options, p), 1 }
 
 /******************************************************************************
-* SECTION: 全局变量
+* SECTION: 鍏ㄥ眬鍙橀噺
 *******************************************************************************/
-static const struct fuse_opt option_spec[] = {		/* 用于FUSE文件系统解析参数 */
+static const struct fuse_opt option_spec[] = {		/* 鐢ㄤ簬FUSE鏂囦欢绯荤粺瑙ｆ瀽鍙傛暟 */
 	OPTION("--device=%s", device),
 	FUSE_OPT_END
 };
 
-struct custom_options newfs_options;			 /* 全局选项 */
+struct custom_options newfs_options;			 /* 鍏ㄥ眬閫夐」 */
 struct newfs_super super; 
 /******************************************************************************
-* SECTION: FUSE操作定义
+* SECTION: FUSE鎿嶄綔瀹氫箟
 *******************************************************************************/
 static struct fuse_operations operations = {
-	.init = newfs_init,						 /* mount文件系统 */		
-	.destroy = newfs_destroy,				 /* umount文件系统 */
-	.mkdir = newfs_mkdir,					 /* 建目录，mkdir */
-	.getattr = newfs_getattr,				 /* 获取文件属性，类似stat，必须完成 */
-	.readdir = newfs_readdir,				 /* 填充dentrys */
-	.mknod = newfs_mknod,					 /* 创建文件，touch相关 */
-	.write = NULL,								  	 /* 写入文件 */
-	.read = NULL,								  	 /* 读文件 */
-	.utimens = newfs_utimens,				 /* 修改时间，忽略，避免touch报错 */
-	.truncate = NULL,						  		 /* 改变文件大小 */
-	.unlink = NULL,							  		 /* 删除文件 */
-	.rmdir	= NULL,							  		 /* 删除目录， rm -r */
-	.rename = NULL,							  		 /* 重命名，mv */
+	.init = newfs_init,						 /* mount鏂囦欢绯荤粺 */		
+	.destroy = newfs_destroy,				 /* umount鏂囦欢绯荤粺 */
+	.mkdir = newfs_mkdir,					 /* 寤虹洰褰曪紝mkdir */
+	.getattr = newfs_getattr,				 /* 鑾峰彇鏂囦欢灞炴€э紝绫讳技stat锛屽繀椤诲畬鎴� */
+	.readdir = newfs_readdir,				 /* 濉厖dentrys */
+	.mknod = newfs_mknod,					 /* 鍒涘缓鏂囦欢锛宼ouch鐩稿叧 */
+	.write = NULL,								  	 /* 鍐欏叆鏂囦欢 */
+	.read = NULL,								  	 /* 璇绘枃浠� */
+	.utimens = newfs_utimens,				 /* 淇敼鏃堕棿锛屽拷鐣ワ紝閬垮厤touch鎶ラ敊 */
+	.truncate = NULL,						  		 /* 鏀瑰彉鏂囦欢澶у皬 */
+	.unlink = NULL,							  		 /* 鍒犻櫎鏂囦欢 */
+	.rmdir	= NULL,							  		 /* 鍒犻櫎鐩綍锛� rm -r */
+	.rename = NULL,							  		 /* 閲嶅懡鍚嶏紝mv */
 
 	.open = NULL,							
 	.opendir = NULL,
 	.access = NULL
 };
 /******************************************************************************
-* SECTION: 必做函数实现
+* SECTION: 蹇呭仛鍑芥暟瀹炵幇
 *******************************************************************************/
 /**
- * @brief 挂载（mount）文件系统
+ * @brief 鎸傝浇锛坢ount锛夋枃浠剁郴缁�
  * 
- * @param conn_info 可忽略，一些建立连接相关的信息 
+ * @param conn_info 鍙拷鐣ワ紝涓€浜涘缓绔嬭繛鎺ョ浉鍏崇殑淇℃伅 
  * @return void*
  */
 void* newfs_init(struct fuse_conn_info * conn_info) {
-	/* TODO: 在这里进行挂载 */
+	/* TODO: 鍦ㄨ繖閲岃繘琛屾寕杞� */
 	// newfs?
 	// SFS_ERROR_NONE=0
-	// 为什么这个东西是可以用的啊，不许要自己写？
+	// 涓轰粈涔堣繖涓笢瑗挎槸鍙互鐢ㄧ殑鍟婏紝涓嶈瑕佽嚜宸卞啓锛�
     if (newfs_mount(newfs_options) != 0) {
 		// SFS_DBG("[%s] mount error\n", __func__);
 		printf("init error\n");
 		while(1);
-		// 这是个库吧，应该能用
+		// 杩欐槸涓簱鍚э紝搴旇鑳界敤
 		fuse_exit(fuse_get_context()->fuse);
 		return NULL;
 	} 
-	return NULL;
-	/* 下面是一个控制设备的示例 */
+	/* 涓嬮潰鏄竴涓帶鍒惰澶囩殑绀轰緥 */
 	super.fd = ddriver_open(newfs_options.device);
 	
 	return NULL;
 }
 
 /**
- * @brief 卸载（umount）文件系统
+ * @brief 鍗歌浇锛坲mount锛夋枃浠剁郴缁�
  * 
- * @param p 可忽略
+ * @param p 鍙拷鐣�
  * @return void
  */
 void newfs_destroy(void* p) {
-	// 同上面那个？
+	// 鍚屼笂闈㈤偅涓紵
 	if (sfs_umount() != 0) {
 		printf("destory error\n");
 		while(1);
 		fuse_exit(fuse_get_context()->fuse);
 		return;
 	}
-	/* TODO: 在这里进行卸载 */
+	/* TODO: 鍦ㄨ繖閲岃繘琛屽嵏杞� */
 	ddriver_close(super.fd);
 
 	return;
 }
 
 /**
- * @brief 创建目录
+ * @brief 鍒涘缓鐩綍
  * 
- * @param path 相对于挂载点的路径
- * @param mode 创建模式（只读？只写？），可忽略
- * @return int 0成功，否则失败
+ * @param path 鐩稿浜庢寕杞界偣鐨勮矾寰�
+ * @param mode 鍒涘缓妯″紡锛堝彧璇伙紵鍙啓锛燂級锛屽彲蹇界暐
+ * @return int 0鎴愬姛锛屽惁鍒欏け璐�
  */
 int newfs_mkdir(const char* path, mode_t mode) {
 	(void)mode;
@@ -119,201 +118,201 @@ int newfs_mkdir(const char* path, mode_t mode) {
 	sfs_alloc_dentry(last_dentry->inode, dentry);
 	
 	// return SFS_ERROR_NONE;
-	/* TODO: 解析路径，创建目录 */
+	/* TODO: 瑙ｆ瀽璺緞锛屽垱寤虹洰褰� */
 	return 0;
 }
 
 /**
- * @brief 获取文件或目录的属性，该函数非常重要
+ * @brief 鑾峰彇鏂囦欢鎴栫洰褰曠殑灞炴€э紝璇ュ嚱鏁伴潪甯搁噸瑕�
  * 
- * @param path 相对于挂载点的路径
- * @param newfs_stat 返回状态
- * @return int 0成功，否则失败
+ * @param path 鐩稿浜庢寕杞界偣鐨勮矾寰�
+ * @param newfs_stat 杩斿洖鐘舵€�
+ * @return int 0鎴愬姛锛屽惁鍒欏け璐�
  */
 int newfs_getattr(const char* path, struct stat * newfs_stat) {
-	/* TODO: 解析路径，获取Inode，填充newfs_stat，可参考/fs/simplefs/sfs.c的sfs_getattr()函数实现 */
+	/* TODO: 瑙ｆ瀽璺緞锛岃幏鍙朓node锛屽～鍏卬ewfs_stat锛屽彲鍙傝€�/fs/simplefs/sfs.c鐨剆fs_getattr()鍑芥暟瀹炵幇 */
 	return 0;
 }
 
 /**
- * @brief 遍历目录项，填充至buf，并交给FUSE输出
+ * @brief 閬嶅巻鐩綍椤癸紝濉厖鑷砨uf锛屽苟浜ょ粰FUSE杈撳嚭
  * 
- * @param path 相对于挂载点的路径
- * @param buf 输出buffer
- * @param filler 参数讲解:
+ * @param path 鐩稿浜庢寕杞界偣鐨勮矾寰�
+ * @param buf 杈撳嚭buffer
+ * @param filler 鍙傛暟璁茶В:
  * 
  * typedef int (*fuse_fill_dir_t) (void *buf, const char *name,
  *				const struct stat *stbuf, off_t off)
- * buf: name会被复制到buf中
- * name: dentry名字
- * stbuf: 文件状态，可忽略
- * off: 下一次offset从哪里开始，这里可以理解为第几个dentry
+ * buf: name浼氳澶嶅埗鍒癰uf涓�
+ * name: dentry鍚嶅瓧
+ * stbuf: 鏂囦欢鐘舵€侊紝鍙拷鐣�
+ * off: 涓嬩竴娆ffset浠庡摢閲屽紑濮嬶紝杩欓噷鍙互鐞嗚В涓虹鍑犱釜dentry
  * 
- * @param offset 第几个目录项？
- * @param fi 可忽略
- * @return int 0成功，否则失败
+ * @param offset 绗嚑涓洰褰曢」锛�
+ * @param fi 鍙拷鐣�
+ * @return int 0鎴愬姛锛屽惁鍒欏け璐�
  */
 int newfs_readdir(const char * path, void * buf, fuse_fill_dir_t filler, off_t offset,
 			    		 struct fuse_file_info * fi) {
-    /* TODO: 解析路径，获取目录的Inode，并读取目录项，利用filler填充到buf，可参考/fs/simplefs/sfs.c的sfs_readdir()函数实现 */
+    /* TODO: 瑙ｆ瀽璺緞锛岃幏鍙栫洰褰曠殑Inode锛屽苟璇诲彇鐩綍椤癸紝鍒╃敤filler濉厖鍒癰uf锛屽彲鍙傝€�/fs/simplefs/sfs.c鐨剆fs_readdir()鍑芥暟瀹炵幇 */
     return 0;
 }
 
 /**
- * @brief 创建文件
+ * @brief 鍒涘缓鏂囦欢
  * 
- * @param path 相对于挂载点的路径
- * @param mode 创建文件的模式，可忽略
- * @param dev 设备类型，可忽略
- * @return int 0成功，否则失败
+ * @param path 鐩稿浜庢寕杞界偣鐨勮矾寰�
+ * @param mode 鍒涘缓鏂囦欢鐨勬ā寮忥紝鍙拷鐣�
+ * @param dev 璁惧绫诲瀷锛屽彲蹇界暐
+ * @return int 0鎴愬姛锛屽惁鍒欏け璐�
  */
 int newfs_mknod(const char* path, mode_t mode, dev_t dev) {
-	/* TODO: 解析路径，并创建相应的文件 */
+	/* TODO: 瑙ｆ瀽璺緞锛屽苟鍒涘缓鐩稿簲鐨勬枃浠� */
 	return 0;
 }
 
 /**
- * @brief 修改时间，为了不让touch报错 
+ * @brief 淇敼鏃堕棿锛屼负浜嗕笉璁﹖ouch鎶ラ敊 
  * 
- * @param path 相对于挂载点的路径
- * @param tv 实践
- * @return int 0成功，否则失败
+ * @param path 鐩稿浜庢寕杞界偣鐨勮矾寰�
+ * @param tv 瀹炶返
+ * @return int 0鎴愬姛锛屽惁鍒欏け璐�
  */
 int newfs_utimens(const char* path, const struct timespec tv[2]) {
 	(void)path;
 	return 0;
 }
 /******************************************************************************
-* SECTION: 选做函数实现
+* SECTION: 閫夊仛鍑芥暟瀹炵幇
 *******************************************************************************/
 /**
- * @brief 写入文件
+ * @brief 鍐欏叆鏂囦欢
  * 
- * @param path 相对于挂载点的路径
- * @param buf 写入的内容
- * @param size 写入的字节数
- * @param offset 相对文件的偏移
- * @param fi 可忽略
- * @return int 写入大小
+ * @param path 鐩稿浜庢寕杞界偣鐨勮矾寰�
+ * @param buf 鍐欏叆鐨勫唴瀹�
+ * @param size 鍐欏叆鐨勫瓧鑺傛暟
+ * @param offset 鐩稿鏂囦欢鐨勫亸绉�
+ * @param fi 鍙拷鐣�
+ * @return int 鍐欏叆澶у皬
  */
 int newfs_write(const char* path, const char* buf, size_t size, off_t offset,
 		        struct fuse_file_info* fi) {
-	/* 选做 */
+	/* 閫夊仛 */
 	return size;
 }
 
 /**
- * @brief 读取文件
+ * @brief 璇诲彇鏂囦欢
  * 
- * @param path 相对于挂载点的路径
- * @param buf 读取的内容
- * @param size 读取的字节数
- * @param offset 相对文件的偏移
- * @param fi 可忽略
- * @return int 读取大小
+ * @param path 鐩稿浜庢寕杞界偣鐨勮矾寰�
+ * @param buf 璇诲彇鐨勫唴瀹�
+ * @param size 璇诲彇鐨勫瓧鑺傛暟
+ * @param offset 鐩稿鏂囦欢鐨勫亸绉�
+ * @param fi 鍙拷鐣�
+ * @return int 璇诲彇澶у皬
  */
 int newfs_read(const char* path, char* buf, size_t size, off_t offset,
 		       struct fuse_file_info* fi) {
-	/* 选做 */
+	/* 閫夊仛 */
 	return size;			   
 }
 
 /**
- * @brief 删除文件
+ * @brief 鍒犻櫎鏂囦欢
  * 
- * @param path 相对于挂载点的路径
- * @return int 0成功，否则失败
+ * @param path 鐩稿浜庢寕杞界偣鐨勮矾寰�
+ * @return int 0鎴愬姛锛屽惁鍒欏け璐�
  */
 int newfs_unlink(const char* path) {
-	/* 选做 */
+	/* 閫夊仛 */
 	return 0;
 }
 
 /**
- * @brief 删除目录
+ * @brief 鍒犻櫎鐩綍
  * 
- * 一个可能的删除目录操作如下：
+ * 涓€涓彲鑳界殑鍒犻櫎鐩綍鎿嶄綔濡備笅锛�
  * rm ./tests/mnt/j/ -r
  *  1) Step 1. rm ./tests/mnt/j/j
  *  2) Step 2. rm ./tests/mnt/j
- * 即，先删除最深层的文件，再删除目录文件本身
+ * 鍗筹紝鍏堝垹闄ゆ渶娣卞眰鐨勬枃浠讹紝鍐嶅垹闄ょ洰褰曟枃浠舵湰韬�
  * 
- * @param path 相对于挂载点的路径
- * @return int 0成功，否则失败
+ * @param path 鐩稿浜庢寕杞界偣鐨勮矾寰�
+ * @return int 0鎴愬姛锛屽惁鍒欏け璐�
  */
 int newfs_rmdir(const char* path) {
-	/* 选做 */
+	/* 閫夊仛 */
 	return 0;
 }
 
 /**
- * @brief 重命名文件 
+ * @brief 閲嶅懡鍚嶆枃浠� 
  * 
- * @param from 源文件路径
- * @param to 目标文件路径
- * @return int 0成功，否则失败
+ * @param from 婧愭枃浠惰矾寰�
+ * @param to 鐩爣鏂囦欢璺緞
+ * @return int 0鎴愬姛锛屽惁鍒欏け璐�
  */
 int newfs_rename(const char* from, const char* to) {
-	/* 选做 */
+	/* 閫夊仛 */
 	return 0;
 }
 
 /**
- * @brief 打开文件，可以在这里维护fi的信息，例如，fi->fh可以理解为一个64位指针，可以把自己想保存的数据结构
- * 保存在fh中
+ * @brief 鎵撳紑鏂囦欢锛屽彲浠ュ湪杩欓噷缁存姢fi鐨勪俊鎭紝渚嬪锛宖i->fh鍙互鐞嗚В涓轰竴涓�64浣嶆寚閽堬紝鍙互鎶婅嚜宸辨兂淇濆瓨鐨勬暟鎹粨鏋�
+ * 淇濆瓨鍦╢h涓�
  * 
- * @param path 相对于挂载点的路径
- * @param fi 文件信息
- * @return int 0成功，否则失败
+ * @param path 鐩稿浜庢寕杞界偣鐨勮矾寰�
+ * @param fi 鏂囦欢淇℃伅
+ * @return int 0鎴愬姛锛屽惁鍒欏け璐�
  */
 int newfs_open(const char* path, struct fuse_file_info* fi) {
-	/* 选做 */
+	/* 閫夊仛 */
 	return 0;
 }
 
 /**
- * @brief 打开目录文件
+ * @brief 鎵撳紑鐩綍鏂囦欢
  * 
- * @param path 相对于挂载点的路径
- * @param fi 文件信息
- * @return int 0成功，否则失败
+ * @param path 鐩稿浜庢寕杞界偣鐨勮矾寰�
+ * @param fi 鏂囦欢淇℃伅
+ * @return int 0鎴愬姛锛屽惁鍒欏け璐�
  */
 int newfs_opendir(const char* path, struct fuse_file_info* fi) {
-	/* 选做 */
+	/* 閫夊仛 */
 	return 0;
 }
 
 /**
- * @brief 改变文件大小
+ * @brief 鏀瑰彉鏂囦欢澶у皬
  * 
- * @param path 相对于挂载点的路径
- * @param offset 改变后文件大小
- * @return int 0成功，否则失败
+ * @param path 鐩稿浜庢寕杞界偣鐨勮矾寰�
+ * @param offset 鏀瑰彉鍚庢枃浠跺ぇ灏�
+ * @return int 0鎴愬姛锛屽惁鍒欏け璐�
  */
 int newfs_truncate(const char* path, off_t offset) {
-	/* 选做 */
+	/* 閫夊仛 */
 	return 0;
 }
 
 
 /**
- * @brief 访问文件，因为读写文件时需要查看权限
+ * @brief 璁块棶鏂囦欢锛屽洜涓鸿鍐欐枃浠舵椂闇€瑕佹煡鐪嬫潈闄�
  * 
- * @param path 相对于挂载点的路径
- * @param type 访问类别
+ * @param path 鐩稿浜庢寕杞界偣鐨勮矾寰�
+ * @param type 璁块棶绫诲埆
  * R_OK: Test for read permission. 
  * W_OK: Test for write permission.
  * X_OK: Test for execute permission.
  * F_OK: Test for existence. 
  * 
- * @return int 0成功，否则失败
+ * @return int 0鎴愬姛锛屽惁鍒欏け璐�
  */
 int newfs_access(const char* path, int type) {
-	/* 选做: 解析路径，判断是否存在 */
+	/* 閫夊仛: 瑙ｆ瀽璺緞锛屽垽鏂槸鍚﹀瓨鍦� */
 	return 0;
 }	
 /******************************************************************************
-* SECTION: FUSE入口
+* SECTION: FUSE鍏ュ彛
 *******************************************************************************/
 int main(int argc, char **argv)
 {
@@ -321,7 +320,7 @@ int main(int argc, char **argv)
 	printf("test\n")
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 
-	newfs_options.device = strdup("TODO: 这里填写你的ddriver设备路径");
+	newfs_options.device = strdup("TODO: 杩欓噷濉啓浣犵殑ddriver璁惧璺緞");
 
 	if (fuse_opt_parse(&args, &newfs_options, option_spec, NULL) == -1)
 		return -1;

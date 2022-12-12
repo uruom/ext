@@ -110,6 +110,11 @@ CMakeFiles/newfs.dir/src/newfs.c.o: ../src/newfs.c \
   /usr/include/asm-generic/errno-base.h \
   ../include/types.h
 
+CMakeFiles/newfs.dir/src/newfunction.c.o: ../src/newfunction.c \
+  /usr/include/stdc-predef.h
+
+
+../src/newfunction.c:
 
 /usr/include/asm-generic/errno-base.h:
 

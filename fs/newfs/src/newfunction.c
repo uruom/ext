@@ -2,14 +2,14 @@
 
 
 /**
- * @brief ����sfs, Layout ����
+ * @brief 閿熸枻鎷烽敓鏂ゆ嫹sfs, Layout 閿熸枻鎷烽敓鏂ゆ嫹
  * 
  * Layout
  * | Super | Inode Map | Data |
  * 
  * IO_SZ = BLK_SZ
  * 
- * ÿ��Inodeռ��һ��Blk
+ * 姣忛敓鏂ゆ嫹Inode鍗犻敓鏂ゆ嫹涓€閿熸枻鎷稡lk
  * @param options 
  * @return int 
  */
@@ -32,7 +32,7 @@ int newfs_mount(struct custom_options options){
     super.is_mounted = 0;
 
     // driver_fd = open(options.device, O_RDWR);
-    // ddriver_open �������Ӧ�ò�����д
+    // ddriver_open 閿熸枻鎷烽敓鏂ゆ嫹閿熸枻鎷烽敓鎺ワ讣鎷疯矊閿熸枻鎷烽敓鏂ゆ嫹閿熷彨锟�
     driver_fd = ddriver_open(options.device);
 
     if (driver_fd < 0) {
@@ -40,7 +40,7 @@ int newfs_mount(struct custom_options options){
     }
 
     super.driver_fd = driver_fd;
-    // �ܹ���ת����define��Ӧ��û����
+    // 閿熸澃鐧告嫹閿熸枻鎷疯浆閿熸枻鎷烽敓鏂ゆ嫹define閿熸枻鎷峰簲閿熸枻鎷锋病閿熸枻鎷烽敓鏂ゆ嫹
     ddriver_ioctl(SFS_DRIVER(), NEW_IOC_REQ_DEVICE_SIZE,  &super.sz_disk);
     ddriver_ioctl(SFS_DRIVER(), NEW_IOC_REQ_DEVICE_IO_SZ, &super.sz_io);
     
@@ -50,9 +50,9 @@ int newfs_mount(struct custom_options options){
                         sizeof(struct newfs_super_d)) != NEWFS_ERROR_NONE) {
         return -NEWFS_ERROR_IO;
     }   
-                                                      /* ��ȡsuper */
-    if (newfs_super_d.magic_num != NEWFS_MAGIC_NUM) {     /* ������ */
-                                                      /* ��������ִ�С */
+                                                      /* 閿熸枻鎷峰彇super */
+    if (newfs_super_d.magic_num != NEWFS_MAGIC_NUM) {     /* 閿熸枻鎷烽敓鏂ゆ嫹閿熸枻鎷� */
+                                                      /* 閿熸枻鎷烽敓鏂ゆ嫹閿熸枻鎷烽敓鏂ゆ嫹鎵ч敓鍙拷 */
         super_blks = NEWFS_ROUND_UP(sizeof(struct newfs_super_d), NEWFS_IO_SZ()) / super.io_sz;// SFS_IO_SZ();
 
         // inode_num  =  SFS_DISK_SZ() / ((SFS_DATA_PER_FILE + SFS_INODE_PER_FILE) * SFS_IO_SZ());
@@ -61,7 +61,7 @@ int newfs_mount(struct custom_options options){
         map_inode_blks = NEWFS_ROUND_UP(NEWFS_ROUND_UP(inode_num, UINT32_BITS), super.io_sz)//SFS_IO_SZ() 
                          / super.io_sz;//SFS_IO_SZ()
         
-                                                      /* ����layout */
+                                                      /* 閿熸枻鎷烽敓鏂ゆ嫹layout */
         super.max_ino = (inode_num - super_blks - map_inode_blks); 
         newfs_super_d.map_inode_offset = NEWFS_SUPER_OFS + NEWFS_BLKS_SZ(super_blks);
         newfs_super_d.data_offset = newfs_super_d.map_inode_offset + NEWFS_BLKS_SZ(map_inode_blks);
@@ -71,7 +71,7 @@ int newfs_mount(struct custom_options options){
         // SFS_DBG("inode map blocks: %d\n", map_inode_blks);
         is_init = 1;
     }
-    super.sz_usage   = newfs_super_d.sz_usage;      /* ���� in-memory �ṹ */
+    super.sz_usage   = newfs_super_d.sz_usage;      /* 閿熸枻鎷烽敓鏂ゆ嫹 in-memory 閿熺粨鏋� */
     
     super.map_inode = (uint8_t *)malloc(SFS_BLKS_SZ(newfs_super_d.map_inode_blks));
     super.map_inode_blks = newfs_super_d.map_inode_blks;
@@ -83,7 +83,7 @@ int newfs_mount(struct custom_options options){
         return -NEWFS_ERROR_IO;
     }
 
-    if (is_init) {                                    /* ������ڵ� */
+    if (is_init) {                                    /* 閿熸枻鎷烽敓鏂ゆ嫹閿熸枻鎷疯瘶閿燂拷 */
         root_inode = newfs_alloc_inode(root_dentry);
         sfs_sync_inode(root_inode);
     }
@@ -130,7 +130,7 @@ struct newfs_inode* newfs_alloc_inode(struct newfs_dentry * dentry) {
     {
         for (bit_cursor = 0; bit_cursor < UINT8_BITS; bit_cursor++) {
             if((super.map_inode[byte_cursor] & (0x1 << bit_cursor)) == 0) {    
-                                                      /* 当前ino_cursor位置空闲 */
+                                                      /* 瑜版挸澧爄no_cursor娴ｅ秶鐤嗙粚娲＝ */
                 super.map_inode[byte_cursor] |= (0x1 << bit_cursor);
                 is_find_free_entry = 1;           
                 break;
@@ -148,10 +148,10 @@ struct newfs_inode* newfs_alloc_inode(struct newfs_dentry * dentry) {
     inode = (struct newfs_inode*)malloc(sizeof(struct newfs_inode));
     inode->ino  = ino_cursor; 
     inode->size = 0;
-                                                      /* dentry指向inode */
+                                                      /* dentry閹稿洤鎮渋node */
     dentry->inode = inode;
     dentry->ino   = inode->ino;
-                                                      /* inode指回dentry */
+                                                      /* inode閹稿洤娲杁entry */
     inode->dentry = dentry;
     
     inode->dir_cnt = 0;
@@ -171,7 +171,6 @@ int newfs_sync_inode(struct newfs_inode * inode) {
     int ino             = inode->ino;
     inode_d.ino         = ino;
     inode_d.size        = inode->size;
-    memcpy(inode_d.target_path, inode->target_path, SFS_MAX_FILE_NAME);
     inode_d.ftype       = inode->dentry->ftype;
     inode_d.dir_cnt     = inode->dir_cnt;
     int offset;
@@ -181,8 +180,8 @@ int newfs_sync_inode(struct newfs_inode * inode) {
         SFS_DBG("[%s] io error\n", __func__);
         return -SFS_ERROR_IO;
     }
-                                                      /* Cycle 1: 鍐� INODE */
-                                                      /* Cycle 2: 鍐� 鏁版嵁 */
+                                                      /* Cycle 1: 闁告劧鎷� INODE */
+                                                      /* Cycle 2: 闁告劧鎷� 闁轰胶澧楀畵锟� */
     if (SFS_IS_DIR(inode)) {                          
         dentry_cursor = inode->dentrys;
         offset        = SFS_DATA_OFS(ino);
@@ -200,17 +199,3 @@ int newfs_sync_inode(struct newfs_inode * inode) {
             if (dentry_cursor->inode != NULL) {
                 sfs_sync_inode(dentry_cursor->inode);
             }
-
-            dentry_cursor = dentry_cursor->brother;
-            offset += sizeof(struct sfs_dentry_d);
-        }
-    }
-    else if (SFS_IS_REG(inode)) {
-        if (sfs_driver_write(SFS_DATA_OFS(ino), inode->data, 
-                             SFS_BLKS_SZ(SFS_DATA_PER_FILE)) != SFS_ERROR_NONE) {
-            SFS_DBG("[%s] io error\n", __func__);
-            return -SFS_ERROR_IO;
-        }
-    }
-    return SFS_ERROR_NONE;
-}

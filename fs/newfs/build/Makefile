@@ -153,6 +153,30 @@ src/newfs.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/newfs.dir/build.make CMakeFiles/newfs.dir/src/newfs.c.s
 .PHONY : src/newfs.c.s
 
+src/newfunction.o: src/newfunction.c.o
+.PHONY : src/newfunction.o
+
+# target to build an object file
+src/newfunction.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/newfs.dir/build.make CMakeFiles/newfs.dir/src/newfunction.c.o
+.PHONY : src/newfunction.c.o
+
+src/newfunction.i: src/newfunction.c.i
+.PHONY : src/newfunction.i
+
+# target to preprocess a source file
+src/newfunction.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/newfs.dir/build.make CMakeFiles/newfs.dir/src/newfunction.c.i
+.PHONY : src/newfunction.c.i
+
+src/newfunction.s: src/newfunction.c.s
+.PHONY : src/newfunction.s
+
+# target to generate assembly for a file
+src/newfunction.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/newfs.dir/build.make CMakeFiles/newfs.dir/src/newfunction.c.s
+.PHONY : src/newfunction.c.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -165,6 +189,9 @@ help:
 	@echo "... src/newfs.o"
 	@echo "... src/newfs.i"
 	@echo "... src/newfs.s"
+	@echo "... src/newfunction.o"
+	@echo "... src/newfunction.i"
+	@echo "... src/newfunction.s"
 .PHONY : help
 
 
