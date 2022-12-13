@@ -16,7 +16,9 @@
 
 #define NEWFS_MAGIC                  /* TODO: Define by yourself */
 #define NEWFS_DEFAULT_PERM    0777   /* 鍏ㄦ潈闄愭墦寮€ */
-
+// struct custom_options newfs_options;			 /* 全局选项 */
+// struct newfs_super super; 
+#define NEWFS_DBG(fmt, ...) do { printf("NEWFS_DBG: " fmt, ##__VA_ARGS__); } while(0)
 /******************************************************************************
 * SECTION: newfs.c
 *******************************************************************************/
@@ -41,13 +43,28 @@ int   			   newfs_truncate(const char *, off_t);
 int   			   newfs_open(const char *, struct fuse_file_info *);
 int   			   newfs_opendir(const char *, struct fuse_file_info *);
 
+int 			   newfs_symlink(const char *, const char *);
+int 			   newfs_readlink(const char *, char *, size_t);
 // Add
 // newfunction
-int 			   newfs_mount(struct custom_options options);
+// int 			   newfs_mount(struct custom_options options);
+// int 			   newfs_driver_read(int offset, uint8_t *out_content, int size);
+// struct newfs_inode*  newfs_alloc_inode(struct newfs_dentry * dentry);
+// int 			   newfs_sync_inode(struct newfs_inode * inode);
+//  Add
+char* 			   newfs_get_fname(const char* path);
+int 			   newfs_calc_lvl(const char * path);
 int 			   newfs_driver_read(int offset, uint8_t *out_content, int size);
+int 			   newfs_driver_write(int offset, uint8_t *in_content, int size);
+int 			   newfs_alloc_dentry(struct newfs_inode* inode, struct newfs_dentry* dentry);
 struct newfs_inode*  newfs_alloc_inode(struct newfs_dentry * dentry);
 int 			   newfs_sync_inode(struct newfs_inode * inode);
-//  Add
+struct newfs_inode*  newfs_read_inode(struct newfs_dentry * dentry, int ino);
 
+struct newfs_dentry* newfs_get_dentry(struct newfs_inode * inode, int dir);
+struct newfs_dentry* newfs_lookup(const char * path, boolean* is_find, boolean* is_root);
 
+int 			   newfs_mount(struct custom_options options);
+int 			   newfs_umount();
+void 			   newfs_dump_map();
 #endif  /* _newfs_H_ */

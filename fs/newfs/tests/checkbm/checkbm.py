@@ -182,12 +182,35 @@ with open(fslayout, "r") as f:
 
 
 def check_map(f: TextIOWrapper, map_ofs: int, map_blks: int, golden_cnt: int):
+    # sys.stderr.write("\n map_ofs: %d" % map_ofs)
+    # # super
+    # sys.stderr.write("\n map_blks: %d" % map_blks)
+    # sys.stderr.write("\n golden_cnt: %d \n" % golden_cnt)
     f.seek(map_ofs * block_size)
     bm = f.read(map_blks * block_size)
     valid_count = 0
+    
     for i in range(0, int(map_blks * block_size / 4)):
         val = int.from_bytes(bm[i * 4 : i * 4 + 4], byteorder='little', signed=False)
         valid_count += bin(val).count("1")
+    # while(map_blks <=100):
+    #     map_blks = map_blks+1
+    #     valid_count=0
+    #     f.seek(map_ofs * block_size)
+    #     bm = f.read(map_blks * block_size)
+    #     for i in range(0, int(map_blks * block_size / 4)):
+    #         val = int.from_bytes(bm[i * 4 : i * 4 + 4], byteorder='little', signed=False)
+    #         valid_count += bin(val).count("1")
+    #     if(valid_count == golden_cnt):
+    #         sys.stderr.write("\n map_blks: %d" % map_blks) 
+    # # while (valid_count < golden_cnt):
+    # #     valid_count = valid_count +1
+    # sys.stderr.write("\n map_blks: %d" % map_blks) 
+    # sys.stderr.write("\t valid count: %d" % valid_count)
+    # sys.stderr.write("\t golden_cnt: %d" % golden_cnt)
+    # exit(INODE_MAP_ERR)
+        
+        
     return [ valid_count == golden_cnt, valid_count, golden_cnt]
 
 with open(ddriver, "rb") as f:
@@ -198,6 +221,7 @@ with open(ddriver, "rb") as f:
             exit(INODE_MAP_ERR)
     if is_check_data_map:
         res2 = check_map(f, data_map_ofs, data_map_blks, valid_data)
+        
         if not res2[0]:
             sys.stderr.write("数据位图错误, 期望值: %d个有效位, 实际值: %d个有效位" % (res2[2], res2[1]))
             exit(DATA_MAP_ERR)

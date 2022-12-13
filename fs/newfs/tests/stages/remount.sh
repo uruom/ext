@@ -33,13 +33,13 @@ function check_bm() {
     if (( RET == ERR_OK )); then
         return 0
     elif (( RET == INODE_MAP_ERR )); then
-        fail "$_TEST_CASE: Inode位图错误, 请使用checkbm.py和ddriver工具自行检查. 注: 在命令行输入ddriver -d并且安装HexEditor插件即可查看当前ddriver介质情况"
+        fail "$_TEST_CASE: Inode位图错误, 请使用checkbm.py和ddriver工具自行棢�柄1�7. 泄1�7: 在命令行输入ddriver -d并且安装HexEditor插件即可查看当前ddriver介质情况"
     elif (( RET == DATA_MAP_ERR )); then
-        fail "$_TEST_CASE: 数据位图错误, 请使用checkbm.py和ddriver工具自行检查. 注: 在命令行输入ddriver -d并且安装HexEditor插件即可查看当前ddriver介质情况"
+        fail "$_TEST_CASE: 数据位图错误, 请使用checkbm.py和ddriver工具自行棢�柄1�7. 泄1�7: 在命令行输入ddriver -d并且安装HexEditor插件即可查看当前ddriver介质情况"
     elif (( RET == LAYOUT_FILE_ERR )); then
-        fail "$_TEST_CASE: .layout文件有误, 请结合报错信息自行检查"
+        fail "$_TEST_CASE: .layout文件有误, 请结合报错信息自行检柄1�7"
     elif (( RET == GOLDEN_LAYOUT_MISMATCH )); then
-        fail "$_TEST_CASE: .layout文件与golden.json信息不一致, 请结合报错信息自行检查"
+        fail "$_TEST_CASE: .layout文件与golden.json信息不一臄1�7, 请结合报错信息自行检柄1�7"
     fi
     return 1
 }
@@ -54,7 +54,7 @@ mkdir_and_check "${MNTPOINT}/hello"
 TEST_CASE="case 5.1 - umount ${MNTPOINT}"
 core_tester ls "${MNTPOINT}" check_umount "$TEST_CASE"
 
-sleep 1
+sleep 2
 
 TEST_CASE="case 5.2 - check bitmap"
 core_tester ls "${MNTPOINT}" check_bm "$TEST_CASE" 15
