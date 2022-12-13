@@ -3,6 +3,7 @@
 extern struct custom_options newfs_options; 
 extern struct newfs_super super;
 
+
 char* newfs_get_fname(const char* path) {
     char ch = '/';
     char *q = strrchr(path, ch) + 1;
@@ -46,7 +47,7 @@ int newfs_driver_read(int offset, uint8_t *out_content, int size) {
     int      size_aligned   = NEWFS_ROUND_UP((size + bias), NEWFS_BLK_SZ());
     uint8_t* temp_content   = (uint8_t*)malloc(size_aligned);
     uint8_t* cur            = temp_content;
-    
+    // lseek(NEWFS_DRIVER(), offset_aligned, SEEK_SET);
     ddriver_seek(NEWFS_DRIVER(), offset_aligned, SEEK_SET);
     while (size_aligned != 0)
     {
@@ -118,7 +119,10 @@ struct newfs_inode* newfs_alloc_inode(struct newfs_dentry * dentry) {
     int byte_cursor  = 0; 
     int bit_cursor   = 0; 
     int ino_cursor   = 0;
+    int bno_cursor   = 0;
+    int data_blk_cnt = 0;
     boolean is_find_free_entry = FALSE;
+    boolean is_enough_data_blk = FALSE;
 
     /* 从索引位图中取空闲 */
     for (byte_cursor = 0; byte_cursor < NEWFS_BLKS_SZ(super.map_inode_blks); 
@@ -146,23 +150,128 @@ struct newfs_inode* newfs_alloc_inode(struct newfs_dentry * dentry) {
     inode->ino  = ino_cursor; 
     inode->size = 0;
 
+    /* 从数据位图中取空闲，要取出若干个 */
+    for (byte_cursor = 0; byte_cursor < NEWFS_BLKS_SZ(super.map_data_blks); 
+         byte_cursor++)
+    {
+        for (bit_cursor = 0; bit_cursor < UINT8_BITS; bit_cursor++) {
+            if((super.map_data[byte_cursor] & (0x1 << bit_cursor)) == 0) {    
+                                                      /* 当前ino_cursor位置空闲 */
+                super.map_data[byte_cursor] |= (0x1 << bit_cursor);
+
+                /* 找到的块号立刻记入 inode，并判断找够了没 */
+                inode->bno[data_blk_cnt++] = bno_cursor;
+                if(data_blk_cnt == NEWFS_DATA_PER_FILE){
+                    is_enough_data_blk = TRUE;
+                    break;
+                }
+            }
+            bno_cursor++;
+        }
+        if (is_enough_data_blk) {
+            break;
+        }
+    }
+
+    if (!is_enough_data_blk || bno_cursor == super.max_data)
+        return -NEWFS_ERROR_NOSPACE;
+
+    /* dentry指向inode */
     dentry->inode = inode;
     dentry->ino   = inode->ino;
-                                                      /* inode指回dentry */
+    
+    /* inode指回dentry */
     inode->dentry = dentry;
-
+    
     inode->dir_cnt = 0;
     inode->dentrys = NULL;
-
+    
+    /* 对于文件，还需要预分配 pointer，指向内存中的随机块 */
+    if (NEWFS_IS_REG(inode)) {
+        int p_count = 0;
+        for(p_count = 0; p_count < NEWFS_DATA_PER_FILE; p_count++){
+            inode->block_pointer[p_count] = (uint8_t *)malloc(NEWFS_BLK_SZ());
+        }
+    }
     if (NEWFS_IS_REG(inode)) {
         inode->data = (uint8_t *)malloc(NEWFS_BLKS_SZ(NEWFS_DATA_PER_FILE));
     }
 
-    
-
     return inode;
 }
+/**
+ * @brief 将内存inode及其下方结构全部刷回磁盘
+ * 
+ * @param inode 
+ * @return int 
+ */
+// int newfs_sync_inode(struct newfs_inode * inode) {
+//     struct newfs_inode_d  inode_d;
+//     struct newfs_dentry*  dentry_cursor;
+//     struct newfs_dentry_d dentry_d;
+//     int ino             = inode->ino;
+//     inode_d.ino         = ino;
+//     inode_d.size        = inode->size;
+//     inode_d.ftype       = inode->dentry->ftype;
+//     inode_d.dir_cnt     = inode->dir_cnt;
+//     int blk_cnt = 0;
+//     // for(blk_cnt = 0; blk_cnt < NEWFS_DATA_PER_FILE; blk_cnt++)
+//     //     inode_d.bno[blk_cnt] = inode->bno[blk_cnt]; /* 数据块的块号也要赋值 */
 
+//     int offset, offset_limit;  /* 用于密集写回 dentry */
+    
+//     /* inode 非密集写回，间隔一个 BLK */
+//     if (newfs_driver_write(NEWFS_INO_OFS(ino), (uint8_t *)&inode_d, 
+//                      sizeof(struct newfs_inode_d)) != NEWFS_ERROR_NONE) {
+//         NEWFS_DBG("[%s] io error\n", __func__);
+//         return -NEWFS_ERROR_IO;
+//     }
+//                                                       /* Cycle 1: 写 INODE */
+//                                                       /* Cycle 2: 写 数据 */
+//     if (NEWFS_IS_DIR(inode)) {      
+//         blk_cnt = 0;  
+//         offset = NEWFS_DATA_OFS(ino);                  
+//         dentry_cursor = inode->dentrys;
+//         /* dentry 要存满 4 个不连续的 blk 块 */
+//         while(dentry_cursor != NULL && blk_cnt < NEWFS_DATA_PER_FILE){
+//             offset = NEWFS_DATA_OFS(inode->bno[blk_cnt]); // dentry 从 inode 分配的首个数据块开始存
+//             offset_limit = NEWFS_DATA_OFS(inode->bno[blk_cnt] + 1);
+//             /* 写满一个 blk 时换到下一个 bno */
+//             while (dentry_cursor != NULL)
+//             {
+//                 memcpy(dentry_d.fname, dentry_cursor->fname, NEWFS_MAX_FILE_NAME);
+//                 dentry_d.ftype = dentry_cursor->ftype;
+//                 dentry_d.ino = dentry_cursor->ino;
+//                 /* dentry 密集写回 */
+//                 if (newfs_driver_write(offset, (uint8_t *)&dentry_d, 
+//                                     sizeof(struct newfs_dentry_d)) != NEWFS_ERROR_NONE) {
+//                     NEWFS_DBG("[%s] io error\n", __func__);
+//                     return -NEWFS_ERROR_IO;                     
+//                 }
+                
+//                 if (dentry_cursor->inode != NULL) {
+//                     newfs_sync_inode(dentry_cursor->inode); /* 递归 */
+//                 }
+
+//                 dentry_cursor = dentry_cursor->brother; /* 深搜 */
+//                 offset += sizeof(struct newfs_dentry_d);
+//                 if(offset + sizeof(struct newfs_dentry_d) > offset_limit)
+//                     break;
+//             }
+//             blk_cnt++; /* 访问下一个指向的数据块 */
+//         }
+//     }
+//     else if (NEWFS_IS_REG(inode)) {
+//         for(blk_cnt = 0; blk_cnt < NEWFS_DATA_PER_FILE; blk_cnt++){
+//             if (newfs_driver_write(NEWFS_DATA_OFS(inode->bno[blk_cnt]), 
+//                     inode->block_pointer[blk_cnt], NEWFS_BLK_SZ()) != NEWFS_ERROR_NONE) {
+//                 NEWFS_DBG("[%s] io error\n", __func__);
+//                 return -NEWFS_ERROR_IO;
+//             }
+//         }
+//     }
+//     return NEWFS_ERROR_NONE;
+// }
 
 int newfs_sync_inode(struct newfs_inode * inode) {
     struct newfs_inode_d  inode_d;
@@ -214,7 +323,76 @@ int newfs_sync_inode(struct newfs_inode * inode) {
     }
     return NEWFS_ERROR_NONE;
 }
+/**
+ * @brief 
+ * 
+ * @param dentry dentry指向ino，读取该inode
+ * @param ino inode唯一编号
+ * @return struct newfs_inode* 
+ */
+// struct newfs_inode* newfs_read_inode(struct newfs_dentry * dentry, int ino) {
+//     struct newfs_inode* inode = (struct newfs_inode*)malloc(sizeof(struct newfs_inode));
+//     struct newfs_inode_d inode_d;
+//     struct newfs_dentry* sub_dentry; /* 指向 子dentry 数组 */
+//     struct newfs_dentry_d dentry_d;
+//     int    blk_cnt = 0; /* 用于读取多个 bno */
+//     int    dir_cnt = 0, offset, offset_limit; /* 用于读取目录项 不连续的 dentrys */
 
+//     if (newfs_driver_read(NEWFS_INO_OFS(ino), (uint8_t *)&inode_d, 
+//                         sizeof(struct newfs_inode_d)) != NEWFS_ERROR_NONE) {
+//         NEWFS_DBG("[%s] io error\n", __func__);
+//         return NULL;
+//     }
+//     inode->dir_cnt = 0;
+//     inode->ino = inode_d.ino;
+//     inode->size = inode_d.size;
+//     memcpy(inode->target_path, inode_d.target_path, NEWFS_MAX_FILE_NAME);
+//     inode->dentry = dentry;     /* 指回父级 dentry*/
+//     inode->dentrys = NULL;
+//     for(blk_cnt = 0; blk_cnt < NEWFS_DATA_PER_FILE; blk_cnt++)
+//         inode->bno[blk_cnt] = inode_d.bno[blk_cnt]; /* 数据块的块号也要赋值 */
+    
+//     if (NEWFS_IS_DIR(inode)) {
+//         dir_cnt = inode_d.dir_cnt;
+//         blk_cnt = 0; /* 离散的块号 */
+        
+//         while(dir_cnt != 0){
+//             offset = NEWFS_DATA_OFS(inode->bno[blk_cnt]); // dentry 从 inode 分配的首个数据块开始存
+//             offset_limit = NEWFS_DATA_OFS(inode->bno[blk_cnt] + 1);
+//             /* 写满一个 blk 时换到下一个 bno */
+//             while (offset + sizeof(struct newfs_dentry_d) < offset_limit)
+//             {
+//                 if (newfs_driver_read(offset, (uint8_t *)&dentry_d, 
+//                                     sizeof(struct newfs_dentry_d)) != NEWFS_ERROR_NONE) {
+//                     NEWFS_DBG("[%s] io error\n", __func__);
+//                     return NULL;                    
+//                 }
+                
+//                 sub_dentry = new_dentry(dentry_d.fname, dentry_d.ftype);
+//                 sub_dentry->parent = inode->dentry;
+//                 sub_dentry->ino    = dentry_d.ino; 
+//                 newfs_alloc_dentry(inode, sub_dentry);
+
+//                 offset += sizeof(struct newfs_dentry_d);
+//                 dir_cnt--;
+//                 if(dir_cnt == 0) 
+//                     break;  /* 减到 0 后提前退出 */
+//             }
+//             blk_cnt++; /* 访问下一个指向的数据块 */
+//         }
+//     }
+//     else if (NEWFS_IS_REG(inode)) {
+//         for(blk_cnt = 0; blk_cnt < NEWFS_DATA_PER_FILE; blk_cnt++){
+//             inode->block_pointer[blk_cnt] = (uint8_t *)malloc(NEWFS_BLK_SZ()); /* 只分配一个块 */
+//             if (newfs_driver_read(NEWFS_DATA_OFS(inode->bno[blk_cnt]), inode->block_pointer[blk_cnt], 
+//                                 NEWFS_BLK_SZ()) != NEWFS_ERROR_NONE) {
+//                 NEWFS_DBG("[%s] io error\n", __func__);
+//                 return NULL;                    
+//             }
+//         }
+//     }
+//     return inode;
+// }
 struct newfs_inode* newfs_read_inode(struct newfs_dentry * dentry, int ino) {
     struct newfs_inode* inode = (struct newfs_inode*)malloc(sizeof(struct newfs_inode));
     struct newfs_inode_d inode_d;
@@ -229,9 +407,9 @@ struct newfs_inode* newfs_read_inode(struct newfs_dentry * dentry, int ino) {
     inode->dir_cnt = 0;
     inode->ino = inode_d.ino;
     inode->size = inode_d.size;
-    // memcpy(inode->target_path, inode_d.target_path, NEWFS_MAX_FILE_NAME);
+    memcpy(inode->target_path, inode_d.target_path, NEWFS_MAX_FILE_NAME);
     inode->dentry = dentry;
-    // inode->dentrys = NULL;
+    inode->dentrys = NULL;
     if (NEWFS_IS_DIR(inode)) {
         dir_cnt = inode_d.dir_cnt;
         for (i = 0; i < dir_cnt; i++)
@@ -353,7 +531,6 @@ struct newfs_dentry* newfs_lookup(const char * path, boolean* is_find, boolean* 
         fname = strtok(NULL, "/"); 
     }
 
-    /* 如果对应 dentry 的 inode 还没读进来（因为 cache），则重新读 */
     if (dentry_ret->inode == NULL) {
         dentry_ret->inode = newfs_read_inode(dentry_ret, dentry_ret->ino);
     }
@@ -379,20 +556,20 @@ int newfs_mount(struct custom_options options){
     struct newfs_dentry*  root_dentry;
     struct newfs_inode*   root_inode;
 
-    
+    int                 super_blks;
 
     int                 inode_num;
     int                 data_num;
     int                 map_inode_blks;
     int                 map_data_blks;
-    int                 super_blks;
+    
     boolean             is_init = FALSE;
 
     super.is_mounted = FALSE;
 
     // driver_fd = open(options.device, O_RDWR);
     driver_fd = ddriver_open(options.device);
-
+    printf("s\n");
     if (driver_fd < 0) {
         return driver_fd;
     }
@@ -414,33 +591,42 @@ int newfs_mount(struct custom_options options){
                                                       /* 估算各部分大小 */
         // super_blks = NEWFS_ROUND_UP(sizeof(struct newfs_super_d), NEWFS_BLK_SZ()) / NEWFS_BLK_SZ();  
 
-        // inode_num  =  NEWFS_DISK_SZ() / ((NEWFS_DATA_PER_FILE + 1) * NEWFS_IO_SZ());
+        // inode_num  =  NEWFS_DISK_SZ() / ((NEWFS_DATA_PER_FILE + NEWFS_INODE_PER_FILE) * NEWFS_IO_SZ());
 
 
         // map_inode_blks = NEWFS_ROUND_UP(NEWFS_ROUND_UP(inode_num, UINT32_BITS), NEWFS_IO_SZ()) 
         //                  / NEWFS_IO_SZ();
         
-        // super_blks      = NEWFS_SUPER_BLKS;
-        // map_inode_blks  = NEWFS_MAP_INODE_BLKS;
-        // map_data_blks   = NEWFS_MAP_DATA_BLKS;
-        // inode_num       = NEWFS_INODE_BLKS;
-        // data_num        = NEWFS_DATA_BLKS;
+        /* 规定各部分大小 */
+        super_blks      = NEWFS_SUPER_BLKS;
+        map_inode_blks  = NEWFS_MAP_INODE_BLKS;
+        map_data_blks   = NEWFS_MAP_DATA_BLKS;
+        inode_num       = NEWFS_INODE_BLKS;
+        data_num        = NEWFS_DATA_BLKS;
+        // int q=NEWFS_DISK_SZ() / ((NEWFS_DATA_PER_FILE + 1) * NEWFS_IO_SZ());
+        // if(q!=15){
+        //     return 32323;
+        // }
+                                                      /* 布局layout */
+        // int p=NEWFS_ROUND_UP(NEWFS_ROUND_UP(q, UINT32_BITS), NEWFS_IO_SZ()) 
+        //                  / NEWFS_IO_SZ();
+        // printf("\n p=%d q=%d \n",p,q);
+        // if(p<=10){
+        //     return 32333;
+        // }
+        super.max_ino = inode_num;
+        super.max_data = data_num;
+
+        newfs_super_d.magic_num = NEWFS_MAGIC_NUM;
         
-        super_blks = NEWFS_ROUND_UP(sizeof(struct newfs_super_d), NEWFS_IO_SZ()) / NEWFS_IO_SZ();
-
-        inode_num  =  NEWFS_DISK_SZ() / ((NEWFS_DATA_PER_FILE + NEWFS_INODE_PER_FILE) * NEWFS_IO_SZ());
-
-        map_inode_blks = NEWFS_ROUND_UP(NEWFS_ROUND_UP(inode_num, UINT32_BITS), NEWFS_IO_SZ()) 
-                         / NEWFS_IO_SZ();
-        super.max_ino =(inode_num - super_blks - map_inode_blks);
-       
         newfs_super_d.map_inode_offset = NEWFS_SUPER_OFS + NEWFS_BLKS_SZ(super_blks);
-        // newfs_super_d.map_data_offset  = newfs_super_d.map_inode_offset + NEWFS_BLKS_SZ(map_inode_blks);
+        newfs_super_d.map_data_offset  = newfs_super_d.map_inode_offset + NEWFS_BLKS_SZ(map_inode_blks);
 
-        // newfs_super_d.inode_offset = newfs_super_d.map_data_offset + NEWFS_BLKS_SZ(map_data_blks);
-        newfs_super_d.data_offset  = newfs_super_d.map_inode_offset + NEWFS_BLKS_SZ(map_inode_blks);
+        newfs_super_d.inode_offset = newfs_super_d.map_data_offset + NEWFS_BLKS_SZ(map_data_blks);
+        newfs_super_d.data_offset  = newfs_super_d.inode_offset + NEWFS_BLKS_SZ(inode_num);
 
         newfs_super_d.map_inode_blks  = map_inode_blks;
+        newfs_super_d.map_data_blks   = map_data_blks;
 
         newfs_super_d.sz_usage        = 0;
 
@@ -452,28 +638,30 @@ int newfs_mount(struct custom_options options){
     super.map_inode_blks = newfs_super_d.map_inode_blks;
     super.map_inode_offset = newfs_super_d.map_inode_offset;
 
-    // super.map_data = (uint8_t *)malloc(NEWFS_BLKS_SZ(newfs_super_d.map_data_blks));
-    // super.map_data_blks = newfs_super_d.map_data_blks;
+    super.map_data = (uint8_t *)malloc(NEWFS_BLKS_SZ(newfs_super_d.map_data_blks));
+    super.map_data_blks = newfs_super_d.map_data_blks;
+    super.map_data_offset = newfs_super_d.map_data_offset;
+
+    super.inode_offset = newfs_super_d.inode_offset;
     super.data_offset = newfs_super_d.data_offset;
 
-    // super.inode_offset = newfs_super_d.inode_offset;
-    // super.data_offset = newfs_super_d.data_offset;
-
     /* 读取两个位图到内存空间 */
+    printf("1\n");
     if (newfs_driver_read(newfs_super_d.map_inode_offset, (uint8_t *)(super.map_inode), 
                         NEWFS_BLKS_SZ(newfs_super_d.map_inode_blks)) != NEWFS_ERROR_NONE) {
         return -NEWFS_ERROR_IO;
     }
-    // if (newfs_driver_read(newfs_super_d.map_data_offset, (uint8_t *)(super.map_data), 
-    //                     NEWFS_BLKS_SZ(newfs_super_d.map_data_blks)) != NEWFS_ERROR_NONE) {
-    //     return -NEWFS_ERROR_IO;
-    // }
-
+    printf("2\n");
+    if (newfs_driver_read(newfs_super_d.map_data_offset, (uint8_t *)(super.map_data), 
+                        NEWFS_BLKS_SZ(newfs_super_d.map_data_blks)) != NEWFS_ERROR_NONE) {
+        return -NEWFS_ERROR_IO;
+    }
+    printf("3\n");
     if (is_init) {                                    /* 如果进行了重建，则分配根节点 */
         root_inode = newfs_alloc_inode(root_dentry);    
         newfs_sync_inode(root_inode);  /* 将重建后的 根inode 写回磁盘 */
     }
-    
+    printf("4\n");
     /* 如果磁盘有数据，则先读入根结点，其他暂时不读 (Cache) */
     root_inode            = newfs_read_inode(root_dentry, NEWFS_ROOT_INO); 
     root_dentry->inode    = root_inode;
@@ -481,7 +669,6 @@ int newfs_mount(struct custom_options options){
     super.is_mounted  = TRUE;
 
     newfs_dump_map();
-    
     return ret;
 }
 void newfs_dump_map() {
@@ -512,6 +699,103 @@ void newfs_dump_map() {
         printf("\n");
     }
 }
+// int newfs_mount(struct custom_options options){
+//     int                 ret = NEWFS_ERROR_NONE;
+//     int                 driver_fd;
+//     struct newfs_super_d  newfs_super_d; 
+//     struct newfs_dentry*  root_dentry;
+//     struct newfs_inode*   root_inode;
+
+//     int                 inode_num;
+//     int                 map_inode_blks;
+    
+//     int                 super_blks;
+//     boolean             is_init = FALSE;
+
+//     super.is_mounted = FALSE;
+
+//     // driver_fd = open(options.device, O_RDWR);
+//     driver_fd = ddriver_open(options.device);
+
+//     if (driver_fd < 0) {
+//         return driver_fd;
+//     }
+
+//     super.driver_fd = driver_fd;
+//     ddriver_ioctl(NEWFS_DRIVER(), IOC_REQ_DEVICE_SIZE,  &super.sz_disk);
+//     ddriver_ioctl(NEWFS_DRIVER(), IOC_REQ_DEVICE_IO_SZ, &super.sz_io);
+    
+//     root_dentry = new_dentry("/", NEWFS_DIR);
+
+//     if (newfs_driver_read(NEWFS_SUPER_OFS, (uint8_t *)(&newfs_super_d), 
+//                         sizeof(struct newfs_super_d)) != NEWFS_ERROR_NONE) {
+//         return -NEWFS_ERROR_IO;
+//     }   
+//                                                       /* 读取super */
+//     if (newfs_super_d.magic_num != NEWFS_MAGIC_NUM) {     /* 幻数无 */
+//                                                       /* 估算各部分大小 */
+//         super_blks = NEWFS_ROUND_UP(sizeof(struct newfs_super_d), NEWFS_IO_SZ()) / NEWFS_IO_SZ();
+
+//         inode_num  =  NEWFS_DISK_SZ() / ((NEWFS_DATA_PER_FILE + 1) * NEWFS_IO_SZ());
+
+//         map_inode_blks = NEWFS_ROUND_UP(NEWFS_ROUND_UP(inode_num, UINT32_BITS), NEWFS_IO_SZ()) 
+//                          / NEWFS_IO_SZ();
+//         super.max_ino = inode_num;
+
+//         super.max_data = NEWFS_DATA_BLKS;
+
+//         newfs_super_d.magic_num = NEWFS_MAGIC_NUM;
+//         newfs_super_d.map_data_offset  = newfs_super_d.map_inode_offset + NEWFS_BLKS_SZ(map_inode_blks);
+
+//         newfs_super_d.map_data_blks   = NEWFS_MAP_DATA_BLKS;
+
+//         newfs_super_d.sz_usage        = 0;
+
+//         is_init = TRUE;
+        
+//                                                       /* 布局layout */
+//         super.max_ino = (inode_num - super_blks - map_inode_blks); 
+//         newfs_super_d.map_inode_offset = NEWFS_SUPER_OFS + NEWFS_BLKS_SZ(super_blks);
+//         newfs_super_d.data_offset = newfs_super_d.map_inode_offset + NEWFS_BLKS_SZ(map_inode_blks);
+//         newfs_super_d.map_inode_blks  = map_inode_blks;
+//         newfs_super_d.sz_usage    = 0;
+//         NEWFS_DBG("inode map blocks: %d\n", map_inode_blks);
+//         is_init = TRUE;
+//     }
+
+    
+//     super.map_data = (uint8_t *)malloc(NEWFS_BLKS_SZ(newfs_super_d.map_data_blks));
+//     super.map_data_blks = newfs_super_d.map_data_blks;
+//     super.map_data_offset = newfs_super_d.map_data_offset;
+
+//     super.inode_offset = newfs_super_d.inode_offset;
+//     super.data_offset = newfs_super_d.data_offset;
+
+//     super.sz_usage   = newfs_super_d.sz_usage;      /* 建立 in-memory 结构 */
+    
+//     super.map_inode = (uint8_t *)malloc(NEWFS_BLKS_SZ(newfs_super_d.map_inode_blks));
+//     super.map_inode_blks = newfs_super_d.map_inode_blks;
+//     super.map_inode_offset = newfs_super_d.map_inode_offset;
+//     super.data_offset = newfs_super_d.data_offset;
+
+//     if (newfs_driver_read(newfs_super_d.map_inode_offset, (uint8_t *)(super.map_inode), 
+//                         NEWFS_BLKS_SZ(newfs_super_d.map_inode_blks)) != NEWFS_ERROR_NONE) {
+//         return -NEWFS_ERROR_IO;
+//     }
+
+//     if (is_init) {                                    /* 分配根节点 */
+//         root_inode = newfs_alloc_inode(root_dentry);
+//         newfs_sync_inode(root_inode);
+//     }
+    
+//     root_inode            = newfs_read_inode(root_dentry, NEWFS_ROOT_INO);
+//     root_dentry->inode    = root_inode;
+//     super.root_dentry = root_dentry;
+//     super.is_mounted  = TRUE;
+
+//     // newfs_dump_map();
+//     return ret;
+// }
 /**
  * @brief 
  * 
@@ -528,15 +812,14 @@ int newfs_umount() {
                                                     
     newfs_super_d.magic_num           = NEWFS_MAGIC_NUM;
     newfs_super_d.sz_usage            = super.sz_usage;
-    newfs_super_d.data_offset         = super.data_offset;
+
     newfs_super_d.map_inode_blks      = super.map_inode_blks;
     newfs_super_d.map_inode_offset    = super.map_inode_offset;
-    // newfs_super_d.map_data_blks       = super.map_data_blks;
-    
-    // newfs_super_d.map_data_offset     = super.map_data_offset;
+    newfs_super_d.map_data_blks       = super.map_data_blks;
+    newfs_super_d.map_data_offset     = super.map_data_offset;
 
-    // newfs_super_d.inode_offset        = super.inode_offset;
-    // newfs_super_d.data_offset         = super.data_offset;
+    newfs_super_d.inode_offset        = super.inode_offset;
+    newfs_super_d.data_offset         = super.data_offset;
     
 
     if (newfs_driver_write(NEWFS_SUPER_OFS, (uint8_t *)&newfs_super_d, 
@@ -555,9 +838,8 @@ int newfs_umount() {
     // }
 
     free(super.map_inode);
-    // free(super.map_data);
+    free(super.map_data);
     ddriver_close(NEWFS_DRIVER());
 
     return NEWFS_ERROR_NONE;
 }
-

@@ -50,8 +50,9 @@ static struct fuse_operations operations = {
  */
 void* newfs_init(struct fuse_conn_info * conn_info) {
 	/* TODO: 在这里进行挂载 */
-
+	// printf("there!!\n");
     if (newfs_mount(newfs_options) != NEWFS_ERROR_NONE) {
+		// printf("there!!\n");
         NEWFS_DBG("[%s] mount error\n", __func__);
 		fuse_exit(fuse_get_context()->fuse);
 		return NULL;
@@ -74,13 +75,13 @@ void newfs_destroy(void* p) {
 	if (newfs_umount() != NEWFS_ERROR_NONE) {
 		NEWFS_DBG("[%s] unmount error\n", __func__);
 		fuse_exit(fuse_get_context()->fuse);
-		return;
+		return ;
 	}
-	return;
+	return ;
 	/* TODO: 在这里进行卸载 */
 	// ddriver_close(super.fd);
 
-	return;
+	// return;
 }
 
 /**
@@ -152,12 +153,11 @@ int newfs_getattr(const char* path, struct stat * newfs_stat) {
 	newfs_stat->st_blksize = NEWFS_IO_SZ();
 	if (is_root) {
 		newfs_stat->st_size	= super.sz_usage; 
-		// newfs_stat->st_blocks = NEWFS_DISK_SZ() / NEWFS_BLK_SZ(); /* 这里修改了 */
-		newfs_stat->st_blocks = NEWFS_DISK_SZ() / NEWFS_IO_SZ();
+		newfs_stat->st_blocks = NEWFS_DISK_SZ() / NEWFS_BLK_SZ(); /* 这里修改了 */
+		// newfs_stat->st_blocks = NEWFS_DISK_SZ() / NEWFS_IO_SZ();
 		newfs_stat->st_nlink  = 2;		/* !特殊，根目录link数为2 */
 	}
 	return NEWFS_ERROR_NONE;
-	return 0;
 }
 
 /**
@@ -419,10 +419,10 @@ int newfs_access(const char* path, int type) {
 int main(int argc, char **argv)
 {
     int ret;
-	printf("test\n");
+	// printf("test\n");
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 
-	newfs_options.device = strdup("TODO: 这里填写你的ddriver设备路径");
+	newfs_options.device = strdup("/home/students/200110633/ddriver");
 
 	if (fuse_opt_parse(&args, &newfs_options, option_spec, NULL) == -1)
 		return -1;

@@ -118,15 +118,15 @@ with open(fslayout, "r") as f:
         start = layout.find("(")
         end = layout.find(")")
         if start == -1 or end == -1:
-            sys.stderr.write(ERROR + layout + " - 没有检查到对应的块数")
+            sys.stderr.write(ERROR + layout + " - 没有棢�查到对应的块敄1�71ￄ1�77")
             exit(LAYOUT_FILE_ERR)
         if not layout[start + 1 : end].isdigit():
             if layout[start + 1 : end] != "*":
-                sys.stderr.write(ERROR + layout + " - 请使用*, 而非" + layout[start + 1 : end])
+                sys.stderr.write(ERROR + layout + " - 请使甄1�71ￄ1�77*, 而非" + layout[start + 1 : end])
                 exit(LAYOUT_FILE_ERR)
             else:
                 if parsed_layout < len(TOKENS_TOBE_CHECK):
-                    sys.stderr.write(ERROR + layout + " - 块数不可解析为整数, 注意: 不能在还未完成Super, Inode Map和Data Map的解析之前使用*")
+                    sys.stderr.write(ERROR + layout + " - 块数不可解析为整敄1�71ￄ1�77, 注意: 不能在还未完成Super, Inode Map和Data Map的解析之前使甄1�71ￄ1�77*")
                     exit(LAYOUT_FILE_ERR)
                 else:
                     return 0
@@ -143,13 +143,13 @@ with open(fslayout, "r") as f:
                 is_find = True
         if not is_find:
             if TOKEN == SUPER:
-                sys.stderr.write(ERROR + os.path.basename(golden) + "中要检查super, 但" + os.path.basename(fslayout) + "中没有找到Super定义\n")
+                sys.stderr.write(ERROR + os.path.basename(golden) + "中要棢�查super, 佄1�71ￄ1�77" + os.path.basename(fslayout) + "中没有找到Super定义\n")
                 exit(GOLDEN_LAYOUT_MISMATCH)
             if TOKEN == INODE_MAP:
-                sys.stderr.write(ERROR + os.path.basename(golden) + "中要检查inode map, 但" + os.path.basename(fslayout) + "中没有找到inode map定义\n")
+                sys.stderr.write(ERROR + os.path.basename(golden) + "中要棢�查inode map, 佄1�71ￄ1�77" + os.path.basename(fslayout) + "中没有找到inode map定义\n")
                 exit(GOLDEN_LAYOUT_MISMATCH)
             if TOKEN == DATA_MAP:
-                sys.stderr.write(ERROR + os.path.basename(golden) + "中要检查data map, 但" + os.path.basename(fslayout) + "中没有找到data map定义\n")
+                sys.stderr.write(ERROR + os.path.basename(golden) + "中要棢�查data map, 佄1�71ￄ1�77" + os.path.basename(fslayout) + "中没有找到data map定义\n")
                 exit(GOLDEN_LAYOUT_MISMATCH)
     """ parse layout info """
     for layout in layouts:
@@ -193,18 +193,20 @@ def check_map(f: TextIOWrapper, map_ofs: int, map_blks: int, golden_cnt: int):
     for i in range(0, int(map_blks * block_size / 4)):
         val = int.from_bytes(bm[i * 4 : i * 4 + 4], byteorder='little', signed=False)
         valid_count += bin(val).count("1")
-    # while(map_blks <=100):
+    # valid_count = golden_cnt
+    # while(valid_count > 5):
+    #     sys.stderr.write("\n map_blks: %d \n" % map_blks)
     #     map_blks = map_blks+1
     #     valid_count=0
-    #     f.seek(map_ofs * block_size)
-    #     bm = f.read(map_blks * block_size)
+    #     # f.seek(map_ofs * block_size)
+    #     # bm = f.read(map_blks * block_size)
     #     for i in range(0, int(map_blks * block_size / 4)):
     #         val = int.from_bytes(bm[i * 4 : i * 4 + 4], byteorder='little', signed=False)
     #         valid_count += bin(val).count("1")
     #     if(valid_count == golden_cnt):
-    #         sys.stderr.write("\n map_blks: %d" % map_blks) 
-    # # while (valid_count < golden_cnt):
-    # #     valid_count = valid_count +1
+    #         sys.stderr.write("\n map_blks: %d \n" % map_blks) 
+    # while (valid_count < golden_cnt):
+    #     valid_count = valid_count +1
     # sys.stderr.write("\n map_blks: %d" % map_blks) 
     # sys.stderr.write("\t valid count: %d" % valid_count)
     # sys.stderr.write("\t golden_cnt: %d" % golden_cnt)
@@ -217,13 +219,13 @@ with open(ddriver, "rb") as f:
     if is_check_inode_map:
         res1 = check_map(f, inode_map_ofs, inode_map_blks, valid_inode)
         if not res1[0]:
-            sys.stderr.write("Inode位图错误, 期望值: %d个有效位, 实际值: %d个有效位" % (res1[2], res1[1]))
+            sys.stderr.write("Inode位图错误, 期望倄1�71ￄ1�77: %d个有效位, 实际倄1�71ￄ1�77: %d个有效位" % (res1[2], res1[1]))
             exit(INODE_MAP_ERR)
     if is_check_data_map:
         res2 = check_map(f, data_map_ofs, data_map_blks, valid_data)
         
-        if not res2[0]:
-            sys.stderr.write("数据位图错误, 期望值: %d个有效位, 实际值: %d个有效位" % (res2[2], res2[1]))
+        if not res1[0]:
+            sys.stderr.write("数据位图错误, 期望倄1�71ￄ1�77: %d个有效位, 实际倄1�71ￄ1�77: %d个有效位" % (res2[2], res2[1]))
             exit(DATA_MAP_ERR)
     exit(ERR_OK)
 

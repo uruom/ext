@@ -26,4 +26,4 @@
 #| BSIZE = 512 B |
 #| Super(1) | Inode Map(1) | DATA(*) |
 | BSIZE = 1024 B |
-| Super(1) | Inode Map(15) | DATA Map(1) | DATA(*) |
+| Super(1) | Inode Map(1) | DATA Map(1) | DATA(*) |

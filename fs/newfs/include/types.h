@@ -80,12 +80,12 @@ typedef enum newfs_file_type {
 
 #define NEWFS_BLKS_SZ(blks)               ((blks) * NEWFS_BLK_SZ())
 #define NEWFS_ASSIGN_FNAME(pnewfs_dentry, _fname) memcpy(pnewfs_dentry->fname, _fname, strlen(_fname))
-// #define NEWFS_INO_OFS(ino)                (super.inode_offset + (ino) * NEWFS_BLK_SZ())
-// #define NEWFS_DATA_OFS(bno)               (super.data_offset + (bno) * NEWFS_BLK_SZ())
+#define NEWFS_INO_OFS(ino)                (super.inode_offset + (ino) * NEWFS_BLK_SZ())
+#define NEWFS_DATA_OFS(bno)               (super.data_offset + (bno) * NEWFS_BLK_SZ())
 
-#define NEWFS_INO_OFS(ino)                (super.data_offset + ino * NEWFS_BLKS_SZ((\
-                                        NEWFS_INODE_PER_FILE + NEWFS_DATA_PER_FILE)))
-#define NEWFS_DATA_OFS(ino)               (NEWFS_INO_OFS(ino) + NEWFS_BLKS_SZ(NEWFS_INODE_PER_FILE))
+// #define NEWFS_INO_OFS(ino)                (super.data_offset + ino * NEWFS_BLKS_SZ((\
+                                        // NEWFS_INODE_PER_FILE + NEWFS_DATA_PER_FILE)))
+// #define NEWFS_DATA_OFS(ino)               (NEWFS_INO_OFS(ino) + NEWFS_BLKS_SZ(NEWFS_INODE_PER_FILE))
 
 #define NEWFS_IS_DIR(pinode)              (pinode->dentry->ftype == NEWFS_DIR)
 #define NEWFS_IS_REG(pinode)              (pinode->dentry->ftype == NEWFS_REG_FILE)
@@ -114,17 +114,17 @@ struct newfs_super {
     int                 sz_usage;           /* ioctl 相关信息 */
 
     int                 max_ino;
-    // int                 max_data;
+    int                 max_data;
 
     uint8_t*            map_inode;          /* 指向 inode 位图的内存起点 */ 
     int                 map_inode_blks;     /* inode 位图占用的块数 */
     int                 map_inode_offset;   /* inode 位图在磁盘上的偏移 */
 
-    // uint8_t*            map_data;           /* 指向 data 位图的内存起点 */ 
-    // int                 map_data_blks;      /* data 位图占用的块数 */
-    // int                 map_data_offset;    /* data 位图在磁盘上的偏移 */
+    uint8_t*            map_data;           /* 指向 data 位图的内存起点 */ 
+    int                 map_data_blks;      /* data 位图占用的块数 */
+    int                 map_data_offset;    /* data 位图在磁盘上的偏移 */
 
-    // int                 inode_offset;       /* 索引结点的偏移 */
+    int                 inode_offset;       /* 索引结点的偏移 */
     int                 data_offset;        /* 数据块的偏移*/
 
     boolean             is_mounted;
@@ -158,8 +158,8 @@ struct newfs_inode {
     int                 dir_cnt;
     struct newfs_dentry*  dentry;                             /* 指向该 inode 的 父dentry */
     struct newfs_dentry*  dentrys;                            /* 如果是 DIR，指向其所有子项（用链表串接）*/
-    // uint8_t*            block_pointer[NEWFS_DATA_PER_FILE];   /* 如果是 FILE，指向 4 个数据块，四倍结构 */
-    // int                 bno[NEWFS_DATA_PER_FILE];  
+    uint8_t*            block_pointer[NEWFS_DATA_PER_FILE];   /* 如果是 FILE，指向 4 个数据块，四倍结构 */
+    int                 bno[NEWFS_DATA_PER_FILE];  
     uint8_t*           data;             
 };
 
@@ -221,10 +221,10 @@ struct newfs_super_d {
     int         map_inode_blks;     /* inode 位图占用的块数 */
     int         map_inode_offset;   /* inode 位图在磁盘上的偏移 */
 
-    // int         map_data_blks;      /* data 位图占用的块数 */
-    // int         map_data_offset;    /* data 位图在磁盘上的偏移 */
+    int         map_data_blks;      /* data 位图占用的块数 */
+    int         map_data_offset;    /* data 位图在磁盘上的偏移 */
 
-    // int         inode_offset;       /* 索引结点的偏移 */
+    int         inode_offset;       /* 索引结点的偏移 */
     int         data_offset;        /* 数据块的偏移*/
 };
 
@@ -234,7 +234,7 @@ struct newfs_inode_d {
     int             dir_cnt;
     NEWFS_FILE_TYPE   ftype;  
     char            target_path[NEWFS_MAX_FILE_NAME];
-    // int             bno[NEWFS_DATA_PER_FILE];       /* 数据块在磁盘中的块号 */
+    int             bno[NEWFS_DATA_PER_FILE];       /* 数据块在磁盘中的块号 */
 };
 
 struct newfs_dentry_d {
